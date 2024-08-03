@@ -134,11 +134,114 @@ This repository contains the solution for the SQL Developer Technical Test.
 1. Run the basic queries:
     ```sql
       (Document: Query Writing, Optimization, and Advanced Analysis)
+    
+    SELECT 
+    s.survey_name,
+    q.question_text,
+    r.response_text
+    FROM 
+        surveys s
+    JOIN 
+        questions q ON s.survey_id = q.survey_quest_id
+    JOIN 
+        responses r ON q.question_id = r.question_resp_id
+    WHERE 
+        s.survey_id = 1; -- Replace with the desired survey_id
     ```
 
 2. Run the advanced queries:
     ```sql
       (Document: Query Writing, Optimization, and Advanced Analysis)
+
+    select
+    s.survey_name,
+    AVG(
+        case r.response_text
+            when 'Very Satisfied' then 5
+            when 'Satisfied' then 4
+            when 'Neutral' then 3
+            when 'Dissatisfied' then 2
+            when 'Very Dissatisfied' then 1
+            else null
+        end
+    ) as average_score
+    from
+        surveys s
+    join
+        questions q on s.survey_id = q.survey_quest_id
+    join
+        responses r ON q.question_id = r.question_resp_id
+    group by
+        s.survey_name;
+
+
+     select
+    TO_BASE64(u.user_id) as user_,
+    u.user_name,
+    u.user_email,
+    AVG(
+        case r.response_text
+            when 'Very Satisfied' then 5
+            when 'Satisfied' then 4
+            when 'Neutral' then 3
+            when 'Dissatisfied' then 2
+            when 'Very Dissatisfied' then 1
+            else null
+        end
+    ) as average_score_user
+    from
+        users u
+    join
+        responses r on u.user_id = r.user_resp_id 
+        
+    group by
+        u.user_id, u.user_name, u.user_email
+     
+    order by 
+    average_score_user DESC 
+    limit 3;
+
+
+
+    select
+	s.survey_name,
+    q.question_text,
+    r.response_text,
+    COUNT(r.response_text) as response_count
+    from
+        surveys s
+    join
+        questions q on s.survey_id = q.survey_quest_id
+    join
+        responses r on q.question_id = r.question_resp_id
+    where
+        s.survey_id = 1 -- survey_id
+    group by
+        q.question_text,
+        r.response_text
+    order by
+        response_count DESC;
+
+
+    SELECT 
+        AVG(
+            CASE r.response_text
+                WHEN 'Very Satisfied' THEN 5
+                WHEN 'Satisfied' THEN 4
+                WHEN 'Neutral' THEN 3
+                WHEN 'Dissatisfied' THEN 2
+                WHEN 'Very Dissatisfied' THEN 1
+                ELSE NULL
+            END
+        ) INTO avg_score
+    FROM 
+        questions q
+    JOIN 
+        responses r ON q.question_id = r.question_id
+    WHERE 
+        q.survey_id = surveyID;
+
+    SELECT avg_score AS survey_score;
     ```
 
 ### 3. Stored Procedures and Views
@@ -147,11 +250,106 @@ This repository contains the solution for the SQL Developer Technical Test.
 1. Create the stored procedure:
     ```sql
       Script on document Task 3: Stored Procedures and Views.
+
+        create procedure sp_CalculaSurveyScore(IN surveyID int)
+        begin 
+        	-- variables
+        	declare average_score decimal(10,2); -- Variable to store calculated average score.
+        	--    
+        select 
+                COALESCE(
+                    AVG(
+                        CASE r.response_text
+                            WHEN 'Very Satisfied' THEN 5
+                            WHEN 'Satisfied' THEN 4
+                            WHEN 'Neutral' THEN 3
+                            WHEN 'Dissatisfied' THEN 2
+                            WHEN 'Very Dissatisfied' THEN 1
+                            ELSE NULL
+                        END
+                    ), 0
+                ) INTO average_score
+            from
+                questions q 
+                
+            join
+                responses r on q.question_id = r.question_resp_id
+            where
+                q.survey_quest_id = surveyID;
+        
+            select average_score as survey_score;
+        
+        end
+        
+        -- EXECUTE THE STORED PROCEDURE.
+        call sp_CalculaSurveyScore(1);
+
+
+        create procedure sp_CalculateWeights(in surveyID int)
+        begin
+            declare total_score int; -- declare a variable to stored the score.
+            select
+                coalesce(
+                    sum(
+                        case r.response_text -- set the weights
+                            when 'Very Satisfied' then 5
+                            when 'Satisfied' then 4
+                            when 'Neutral' then 3
+                            when 'Dissatisfied' then 2
+                            when 'Very Dissatisfied' then 1
+                            else 0 -- 0 or add more weights.
+                        end
+                    ), 0
+                ) into total_score
+            from
+                questions q
+            left join
+                responses r on q.question_id = r.question_resp_id
+            where
+                q.survey_quest_id = surveyID; -- parameter survey_id
+        
+            select total_score as responses_weight; -- shows the result
+        end
+        
+        -- EXECUTE THE STORED PROCEDURE
+        call sp_CalculateWeights(2); -- 0 is the survey_id parameter.
+
+        
+        
     ```
 
 2. Create the view:
     ```sql
      Script on document Task 3: Stored Procedures and Views.
+        CREATE VIEW v_survey_responses AS
+        SELECT 
+            s.survey_name AS Survey,
+            q.question_text AS Question,
+            r.response_text,
+            AVG(
+                CASE r.response_text
+                    WHEN 'Very Satisfied' THEN 5
+                    WHEN 'Satisfied' THEN 4
+                    WHEN 'Neutral' THEN 3
+                    WHEN 'Dissatisfied' THEN 2
+                    WHEN 'Very Dissatisfied' THEN 1
+                    ELSE 0
+                END
+            ) AS average_score
+        FROM
+            surveys s
+        JOIN
+            questions q ON s.survey_id = q.survey_quest_id
+        JOIN
+            responses r ON q.question_id = r.question_resp_id
+        GROUP BY
+            s.survey_name,
+            q.question_text;
+        
+        
+        
+           -- QUERY TO EXECUTE THE VIEW
+           select *from v_survey_responses;
     ```
 
 ## Solution Description
